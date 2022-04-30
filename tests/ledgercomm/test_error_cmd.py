@@ -36,9 +36,9 @@ def test_wrong_p1p2(cmd):
     raise DeviceException(error_code=sw)
 
 
-@pytest.mark.xfail(raises=WrongDataLengthError)
-def test_wrong_data_length(cmd):
-    # APDUs must be at least 5 bytes: CLA, INS, P1, P2, Lc.
-    sw, _ = cmd.transport.exchange_raw("E000")
-
-    raise DeviceException(error_code=sw)
+# @pytest.mark.xfail(raises=WrongDataLengthError)
+# def test_wrong_data_length(cmd):
+#     # APDUs must be at least 5 bytes: CLA, INS, P1, P2, Lc.
+#     sw, _ = cmd.transport.exchange_raw("E000")
+#
+#     raise DeviceException(error_code=sw)
