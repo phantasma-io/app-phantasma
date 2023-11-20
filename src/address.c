@@ -31,8 +31,6 @@
 #include "transaction/types.h"
 
 bool address_from_pubkey(const uint8_t public_key[static 64], uint8_t *out, size_t out_len) {
-    // const addressHex = Buffer.from('0100' + publicKey, 'hex');
-    // return 'P' + bs58.encode(addressHex);
     uint8_t address_hex[34] = {0};
     address_hex[0] = 0x01;
     address_hex[1] = 0x00;
@@ -41,11 +39,8 @@ bool address_from_pubkey(const uint8_t public_key[static 64], uint8_t *out, size
     char address[128] = {0};
     memset(address, 0, sizeof(address));
     address[0] = 'P';
-    size_t encodedLength =
-        base58_encode(address_hex, sizeof(address_hex), address + 1, sizeof(address) - 1);
-    // size_t encodedLength = format_hex(address_hex, sizeof(address_hex), address,
-    // sizeof(address));
-
+    size_t encodedLength = base58_encode(address_hex, sizeof(address_hex), address + 1, sizeof(address));
+    
     if (out_len < encodedLength) {
         return false;
     }
