@@ -36,3 +36,4 @@ and the emulator is automatically spawned and stopped.
 
 LedgerComm tests are a bit heavier, and need a backend (either Speculos, or a
 physical device) up and running, but can be run on an actual Nano S/X.
+

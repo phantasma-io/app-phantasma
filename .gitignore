@@ -14,9 +14,26 @@ unit-tests/coverage.info
 # Fuzzing
 fuzzing/build/
 
-
 # Editors
 .idea/
+### VisualStudioCode ###
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+!.vscode/*.code-snippets
+
+# Local History for Visual Studio Code
+.history/
+
+# Built Visual Studio Code Extensions
+*.vsix
+
+### VisualStudioCode Patch ###
+# Ignore all local history of files
+.history
+.ionide
 
 # Python
 *.pyc[cod]
@@ -29,3 +46,26 @@ __pycache__/
 # Doxygen
 doc/html
 doc/latex
+
+#ledger tests
+ledger/
+tests/snapshots
+tests/snapshots-tmp
+
+### CMake ###
+CMakeLists.txt.user
+CMakeCache.txt
+CMakeFiles
+CMakeScripts
+Testing
+Makefile
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+CTestTestfile.cmake
+_deps
+cmake-build-debug/
+
+### CMake Patch ###
+# External projects
+*-prefix/

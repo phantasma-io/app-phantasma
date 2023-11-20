@@ -1,2 +1,2 @@
 pip install ledgercomm[hid] pysha3 ecdsa ed25519;
-pytest -s --hid tests/ledgercomm;
+python -m pytest -s --hid tests_old/ledgercomm;
