@@ -210,10 +210,10 @@ int ui_display_transaction() {
     format_u64(g_scriptlength, sizeof(g_scriptlength), G_context.tx_info.transaction.script_len);
 
     memset(g_amount, 0, sizeof(g_amount));
-    char amount[30] = {0};
-    memmove(amount, G_context.tx_info.transaction.value, G_context.tx_info.transaction.value_len);
-    snprintf(g_amount, sizeof(g_amount), "%.*s", sizeof(amount), amount);
-    PRINTF("Amount: %s\n", g_amount);
+    //char amount[255] = {0};
+    memmove(g_amount, G_context.tx_info.transaction.value, G_context.tx_info.transaction.value_len);
+    //snprintf(g_amount, sizeof(g_amount), "%.*s", sizeof(amount), amount);
+    //PRINTF("Amount: %s\n", g_amount);
 
     memset(g_address, 0, sizeof(g_address));
     memmove(g_address, G_context.tx_info.transaction.to, G_context.tx_info.transaction.to_len);

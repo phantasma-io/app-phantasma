@@ -39,7 +39,7 @@ bool address_from_pubkey(const uint8_t public_key[static 64], uint8_t *out, size
     char address[128] = {0};
     memset(address, 0, sizeof(address));
     address[0] = 'P';
-    size_t encodedLength = base58_encode(address_hex, sizeof(address_hex), address + 1, sizeof(address));
+    size_t encodedLength = base58_encode(address_hex, sizeof(address_hex), address + 1, sizeof(address) - 1);
     
     if (out_len < encodedLength) {
         return false;
