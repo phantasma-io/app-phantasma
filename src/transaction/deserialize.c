@@ -286,13 +286,14 @@ parser_status_e transaction_deserialize(buffer_t *buf, transaction_t *tx) {
                                                                    &tx->spend_gas,
                                                                    &tx->end);
     if (script_deserialize_status == PARSING_OK) {
-        tx->from = (uint8_t *) tx->allow_gas.args[3].load.buf.ptr;
-        tx->from_len = tx->allow_gas.args[3].load.buf.size;
-        tx->to = (uint8_t *) tx->transfer_tokens.args[2].load.buf.ptr;
-        tx->to_len = tx->transfer_tokens.args[2].load.buf.size;
+        //'Runtime.TransferTokens', [from(3), to(2), tokenName(1), amount(0)])
+        tx->from = (uint8_t *) tx->transfer_tokens.args[3].load.buf.ptr;
+        tx->from_len = tx->transfer_tokens.args[3].load.buf.size;
+        tx->to = (uint8_t *) tx->transfer_tokens.args[2].load.buf.ptr; // 2
+        tx->to_len = tx->transfer_tokens.args[2].load.buf.size; //2
 
-        tx->value = (uint8_t *) tx->transfer_tokens.args[0].load.buf.ptr;
-        tx->value_len = tx->transfer_tokens.args[0].load.buf.size;
+        tx->value = (uint8_t *) tx->transfer_tokens.args[0].load.buf.ptr; // Was 0 
+        tx->value_len = tx->transfer_tokens.args[0].load.buf.size; // Was 0
 
         tx->token = (uint8_t *) tx->transfer_tokens.args[1].load.buf.ptr;
         tx->token_len = tx->transfer_tokens.args[1].load.buf.size;

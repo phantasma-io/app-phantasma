@@ -69,3 +69,5 @@ cmake-build-debug/
 ### CMake Patch ###
 # External projects
 *-prefix/
+build/
+.vscode/settings.json
