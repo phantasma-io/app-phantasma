@@ -155,9 +155,29 @@ parser_status_e read_method_args(buffer_t *script_buf, load_push_t *args, const 
     return PARSING_OK;
 }
 
+int get_number_of_args(buffer_t script_buf) {
+    int args = 0;
+    size_t offset;
+    memmove(&offset, &script_buf.offset, sizeof(&script_buf.offset));
+    while (script_buf.offset < script_buf.size) {
+        uint8_t opcode;
+        if (!read_opcode(&script_buf, &opcode)) {
+            break;
+        }
+
+        if (opcode == 13) {
+            args++;
+        }else {
+            break;
+        }
+    }
+    memmove(&script_buf.offset, &offset, sizeof(&script_buf.offset));
+    return args;
+}
+
 parser_status_e read_contract(buffer_t *script_buf, contract_t *contract) {
-    parser_status_e method_args_status =
-        read_method_args(script_buf, contract->args, ALLOW_GAS_ARGS_LEN);
+    contract->args_len = get_number_of_args(*script_buf);
+    parser_status_e method_args_status = read_method_args(script_buf, contract->args, contract->args_len);
     if (method_args_status != PARSING_OK) {
         return method_args_status;
     }
@@ -199,25 +219,41 @@ parser_status_e read_interop(buffer_t *script_buf, interop_t *interop) {
 
 parser_status_e script_deserialize(buffer_t *script_buf,
                                    contract_t *allow_gas,
+                                   contract_t *contract_call,
                                    interop_t *transfer_tokens,
                                    contract_t *spend_gas,
-                                   end_t *end) {
+                                   end_t *end,
+                                   transaction_type_e *type) {
     memset(allow_gas, 0, sizeof(contract_t));
+    memset(contract_call, 0, sizeof(contract_t));
     memset(transfer_tokens, 0, sizeof(interop_t));
     memset(spend_gas, 0, sizeof(contract_t));
     memset(end, 0, sizeof(end_t));
+    memset(type, 0, sizeof(transaction_type_e));
     allow_gas->args_len = ALLOW_GAS_ARGS_LEN;
     transfer_tokens->args_len = TRANSFER_TOKENS_ARGS_LEN;
+    contract_call->args_len = MAX_ARGS_LEN;
     spend_gas->args_len = SPEND_GAS_ARGS_LEN;
+    size_t offset;
 
     parser_status_e allow_gas_status = read_contract(script_buf, allow_gas);
     if (allow_gas_status != PARSING_OK) {
         // return allow_gas_status;
     }
+
+    memmove(&offset, &script_buf->offset, sizeof(&script_buf->offset));
     parser_status_e read_transfer_tokens_status = read_interop(script_buf, transfer_tokens);
     if (read_transfer_tokens_status != PARSING_OK) {
         // return read_transfer_tokens_status;
+        memmove(&script_buf->offset, &offset, sizeof(&script_buf->offset));
     }
+
+    parser_status_e read_call_contract_status = read_contract(script_buf, contract_call);
+    if (read_call_contract_status != PARSING_OK) {
+        // return read_spend_gas_status;
+        memmove(&script_buf->offset, &offset, sizeof(&script_buf->offset));
+    }
+
     parser_status_e read_spend_gas_status = read_contract(script_buf, spend_gas);
     if (read_spend_gas_status != PARSING_OK) {
         // return read_spend_gas_status;
@@ -282,30 +318,11 @@ parser_status_e transaction_deserialize(buffer_t *buf, transaction_t *tx) {
     tx->script_buf.offset = 0;
     parser_status_e script_deserialize_status = script_deserialize(&tx->script_buf,
                                                                    &tx->allow_gas,
+                                                                   &tx->contract_call,
                                                                    &tx->transfer_tokens,
                                                                    &tx->spend_gas,
-                                                                   &tx->end);
-    if (script_deserialize_status == PARSING_OK) {
-        //'Runtime.TransferTokens', [from(3), to(2), tokenName(1), amount(0)])
-        tx->from = (uint8_t *) tx->transfer_tokens.args[3].load.buf.ptr;
-        tx->from_len = tx->transfer_tokens.args[3].load.buf.size;
-        tx->to = (uint8_t *) tx->transfer_tokens.args[2].load.buf.ptr; // 2
-        tx->to_len = tx->transfer_tokens.args[2].load.buf.size; //2
-
-        tx->value = (uint8_t *) tx->transfer_tokens.args[0].load.buf.ptr; // Was 0 
-        tx->value_len = tx->transfer_tokens.args[0].load.buf.size; // Was 0
-
-        tx->token = (uint8_t *) tx->transfer_tokens.args[1].load.buf.ptr;
-        tx->token_len = tx->transfer_tokens.args[1].load.buf.size;
-
-        tx->gas_price = (uint8_t *) tx->allow_gas.args[1].load.buf.ptr;
-        tx->gas_price_len = tx->allow_gas.args[1].load.buf.size;
-
-        tx->gas_limit = (uint8_t *) tx->allow_gas.args[0].load.buf.ptr;
-        tx->gas_limit_len = tx->allow_gas.args[0].load.buf.size;
-    } else {
-        return script_deserialize_status;
-    }
+                                                                   &tx->end,
+                                                                   &tx->type);
 
     // get expiration
     buffer_read_u32(buf, &tx->expiration, BE);
@@ -318,16 +335,45 @@ parser_status_e transaction_deserialize(buffer_t *buf, transaction_t *tx) {
     if (tx->payload_len == 0) {
         return PAYLOAD_ZERO_ERROR;
     }
+    
     tx->payload = (uint8_t *) (buf->ptr + buf->offset);
     if (!buffer_seek_cur(buf, tx->payload_len)) {
         return PAYLOAD_PARSING_ERROR;
     }
 
-    // // amount value
-    // if (!buffer_read_u64(buf, &tx->value, BE)) {
-    //    return VALUE_PARSING_ERROR;
-    //}
+    tx->gas_price = (uint8_t *) tx->allow_gas.args[1].load.buf.ptr;
+    tx->gas_price_len = tx->allow_gas.args[1].load.buf.size;
 
-    // return (buf->offset == buf->size) ? PARSING_OK : LENGTH_UNDERFLOW_ERROR;
+    tx->gas_limit = (uint8_t *) tx->allow_gas.args[0].load.buf.ptr;
+    tx->gas_limit_len = tx->allow_gas.args[0].load.buf.size;
+
+    // Handle a Transfer Tokens
+    if (tx->type == TRANSACTION_TYPE_TRANSFER) {
+        //'Runtime.TransferTokens', [from(3), to(2), tokenName(1), amount(0)])
+        tx->from = (uint8_t *) tx->transfer_tokens.args[3].load.buf.ptr;
+        tx->from_len = tx->transfer_tokens.args[3].load.buf.size;
+        tx->to = (uint8_t *) tx->transfer_tokens.args[2].load.buf.ptr; // 2
+        tx->to_len = tx->transfer_tokens.args[2].load.buf.size; //2
+
+        tx->value = (uint8_t *) tx->transfer_tokens.args[0].load.buf.ptr; // Was 0 
+        tx->value_len = tx->transfer_tokens.args[0].load.buf.size; // Was 0
+
+        tx->token = (uint8_t *) tx->transfer_tokens.args[1].load.buf.ptr;
+        tx->token_len = tx->transfer_tokens.args[1].load.buf.size;
+
+        
+    } else if ( tx->type == TRANSACTION_TYPE_STAKE ){
+        // Handle Stake Tokens
+
+    }else if ( tx->type == TRANSACTION_TYPE_UNSTAKE ){
+        // Handle Unstake Tokens
+
+    }else if ( tx->type == TRANSACTION_TYPE_CLAIM ){
+        // Handle Claim
+
+    }else {
+        return script_deserialize_status;
+    }
+
     return PARSING_OK;
 }

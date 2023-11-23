@@ -85,29 +85,15 @@ int handler_sign_tx(buffer_t *cdata, uint8_t chunk, bool more) {
             parser_status_e status = transaction_deserialize(&buf, &G_context.tx_info.transaction);
             PRINTF("Parsing status: %d.\n", status);
             if (status != PARSING_OK) {
-                // return io_send_sw(SW_TX_PARSING_FAIL);
                 uint8_t resp[1] = {0};
                 resp[0] = status;
                 return io_send_response(
                     &(const buffer_t){.ptr = resp, .size = sizeof(resp), .offset = 0},
                     SW_TX_PARSING_FAIL);
-                // return io_send_response(&(const buffer_t){.ptr = G_context.tx_info.raw_tx, .size
-                // = G_context.tx_info.raw_tx_len, .offset = 0}, SW_TX_PARSING_FAIL);
             }
 
             G_context.state = STATE_PARSED;
-
-            // cx_sha512_t hash;
-            // cx_sha512_init(&hash);
-            // cx_hash((cx_hash_t *) &hash,
-            //         CX_LAST,
-            //         G_context.tx_info.raw_tx,
-            //         G_context.tx_info.raw_tx_len,
-            //         G_context.tx_info.m_hash,
-            //         sizeof(G_context.tx_info.m_hash));
-            //
-            // PRINTF("Hash: %.*H\n", sizeof(G_context.tx_info.m_hash), G_context.tx_info.m_hash);
-
+            
             return ui_display_transaction();
         }
     }

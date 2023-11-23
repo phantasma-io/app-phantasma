@@ -10,12 +10,16 @@
 #define CHAIN_LEN        16
 #define SCRIPT_LEN       MAX_TRANSACTION_LEN - (CHAIN_LEN + NEXUS_LEN + PAYLOAD_LEN)
 #define TOKEN_LEN        10
+#define CONTRACT_METHOD_LEN        16
+#define CONTRACT_METHOD_ARGS_LEN   MAX_ARGS_LEN * ADDRESS_LEN
 #define TXLENGTH_LEN     16
 #define SCRIPTLENGTH_LEN 16
 #define PAYLOAD_LEN      64
 
 #define MAX_ARGS_LEN             4
 #define ALLOW_GAS_ARGS_LEN       4
+#define STAKING_TOKENS_ARGS_LEN 2
+#define UNSTAKING_TOKENS_ARGS_LEN 2
 #define TRANSFER_TOKENS_ARGS_LEN 4
 #define SPEND_GAS_ARGS_LEN       1
 
@@ -57,6 +61,14 @@ typedef enum {
 
     PARSING_DEBUG = 0xA3,
 } parser_status_e;
+
+typedef enum {
+    TRANSACTION_TYPE_TRANSFER = 0x01,
+    TRANSACTION_TYPE_STAKE = 0x02,
+    TRANSACTION_TYPE_UNSTAKE = 0x03,
+    TRANSACTION_TYPE_CLAIM = 0x04,
+    TRANSACTION_TYPE_CUSTOM = 0x05,
+} transaction_type_e;
 
 typedef struct {
     buffer_t buf;
@@ -136,9 +148,18 @@ typedef struct {
     uint8_t *gas_price;  /// gas_price value (8 bytes)
     uint64_t gas_price_len;
 
+    uint8_t *method;      /// method (variable length)
+    uint64_t method_len;  /// length of method (8 bytes)
+
+    uint8_t *name;      /// name (variable length)
+    uint64_t name_len;  /// length of name (8 bytes)
+
     buffer_t script_buf;  /// buffer for parsing script.
     contract_t allow_gas;
+    contract_t contract_call;
     interop_t transfer_tokens;
     contract_t spend_gas;
     end_t end;
+
+    transaction_type_e type;
 } transaction_t;

@@ -41,6 +41,9 @@ static char g_amount[30];
 static char g_bip32_path[60];
 static char g_address[ADDRESS_LEN];
 static char g_token[TOKEN_LEN];
+static char g_contract[TOKEN_LEN];
+static char g_contract_method[CONTRACT_METHOD_LEN];
+static char g_contract_method_args[CONTRACT_METHOD_ARGS_LEN];
 static char g_nexus[NEXUS_LEN];
 static char g_chain[CHAIN_LEN];
 static char g_txlength[TXLENGTH_LEN];
@@ -228,6 +231,85 @@ int ui_display_transaction() {
     g_validate_callback = &ui_action_validate_transaction;
 
     ux_flow_init(0, ux_display_transaction_flow, NULL);
+
+    return 0;
+}
+
+
+// Step with title/text for Contract name
+UX_STEP_NOCB(ux_display_contract_step,
+             bnnn_paging,
+             {
+                 .title = "Contract",
+                 .text = g_contract,
+             });
+
+// Step with title/text for Method name
+UX_STEP_NOCB(ux_display_method_step,
+             bnnn_paging,
+             {
+                 .title = "Method",
+                 .text = g_contract_method,
+             });
+
+// Step with title/text for Method name
+UX_STEP_NOCB(ux_display_method_args_step,
+             bnnn_paging,
+             {
+                 .title = "Method Args",
+                 .text = g_contract_method_args,
+             });
+
+// FLOW to display transaction information:
+// #1 screen : eye icon + "Review Transaction"
+// #2 screen : display contract name
+// #3 screen : display method name
+// #4 screen : display arguments
+// #4 screen : approve button
+// #5 screen : reject button
+UX_FLOW(ux_display_custom_transaction_flow,
+        &ux_display_review_step,
+        &ux_display_txlength_step,
+        &ux_display_nexus_step,
+        &ux_display_chain_step,
+        &ux_display_scriptlength_step,
+        &ux_display_contract_step,
+        &ux_display_method_step,
+        &ux_display_approve_step,
+        &ux_display_reject_step);
+
+int ui_display_custom_transaction() {
+    if (G_context.req_type != CONFIRM_TRANSACTION || G_context.state != STATE_PARSED) {
+        G_context.state = STATE_NONE;
+        return io_send_sw(SW_BAD_STATE);
+    }
+
+    memset(g_txlength, 0, sizeof(g_txlength));
+    format_u64(g_txlength, sizeof(g_txlength), G_context.tx_info.raw_tx_len);
+
+    memset(g_nexus, 0, sizeof(g_nexus));
+    memmove(g_nexus, G_context.tx_info.transaction.nexus, G_context.tx_info.transaction.nexus_len);
+
+    memset(g_chain, 0, sizeof(g_chain));
+    memmove(g_chain, G_context.tx_info.transaction.chain, G_context.tx_info.transaction.chain_len);
+
+    memset(g_contract, 0, sizeof(g_contract));
+    memmove(g_contract, G_context.tx_info.transaction.name, G_context.tx_info.transaction.name_len);
+
+    memset(g_contract_method, 0, sizeof(g_contract_method));
+    memmove(g_contract_method, G_context.tx_info.transaction.method, G_context.tx_info.transaction.method_len);
+
+    memset(g_scriptlength, 0, sizeof(g_scriptlength));
+    format_u64(g_scriptlength, sizeof(g_scriptlength), G_context.tx_info.transaction.script_len);
+
+    memset(g_address, 0, sizeof(g_address));
+    memmove(g_address, G_context.tx_info.transaction.to, G_context.tx_info.transaction.to_len);
+
+
+
+    g_validate_callback = &ui_action_validate_transaction;
+
+    ux_flow_init(0, ux_display_custom_transaction_flow, NULL);
 
     return 0;
 }
