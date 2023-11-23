@@ -28,7 +28,8 @@ static char g_address[ADDRESS_LEN];
 UX_STEP_NOCB(ux_menu_ready_step, pnn, {&C_phantasma_logo, "Phantasma", "is ready"});
 UX_STEP_NOCB(ux_menu_version_step, bn, {"Version", APPVERSION});
 UX_STEP_CB(ux_menu_about_step, pb, ui_menu_about(), {&C_icon_certificate, "About"});
-UX_STEP_CB(ux_display_public_flow, pb, ui_menu_pubkey(), {&C_icon_certificate, "Display Address"});
+//UX_STEP_NOCB(ux_display_public_flow, pb, {&C_icon_certificate, "Display Address"});
+UX_STEP_CB(ux_display_public_step, pb, ui_menu_pubkey(), {&C_icon_certificate, "Display Address"});
 UX_STEP_VALID(ux_menu_exit_step, pb, os_sched_exit(-1), {&C_icon_dashboard_x, "Quit"});
 
 // FLOW for the main menu:
@@ -40,6 +41,7 @@ UX_FLOW(ux_menu_main_flow,
         &ux_menu_ready_step,
         &ux_menu_version_step,
         &ux_menu_about_step,
+        &ux_display_public_step,
         &ux_menu_exit_step,
         FLOW_LOOP);
 
@@ -70,16 +72,21 @@ UX_STEP_NOCB(ux_menu_publickey_step, bnnn_paging, {
 });
 
 UX_FLOW(ux_menu_publickey_flow, &ux_menu_publickey_step, &ux_menu_back_step, FLOW_LOOP);
+
 void ui_menu_pubkey() {
     memset(g_address, 0, sizeof(g_address));
-     // TODO - finish this integration get public key 
-
-    //buffer_t cdata = {0};
-    //cdata.ptr = G_context.pk_info.raw_public_key;
-    // handler_get_public_key ( buffer_t *cdata, bool display)
-    /*if (!address_from_pubkey(G_context.pk_info.raw_public_key, g_address, ADDRESS_LEN)) {
-        //return io_send_sw(SW_DISPLAY_ADDRESS_FAIL);
-    }*/
+    
+    int result = handler_get_public_key_menu();
+    uint8_t address[ADDRESS_LEN] = {0};
+    if ( result == -3){
+        G_context.pk_info.raw_public_key[0] = 5;
+    }
+    if (!address_from_pubkey(G_context.pk_info.raw_public_key, address, sizeof(address))) {
+       // return io_send_sw(SW_DISPLAY_ADDRESS_FAIL);
+    }
+    memmove(g_address, address, ADDRESS_LEN);
+    
+    
 
     ux_flow_init(0, ux_menu_publickey_flow, NULL);
 }
