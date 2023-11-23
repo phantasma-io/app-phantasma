@@ -77,9 +77,9 @@ void ui_menu_pubkey() {
     //buffer_t cdata = {0};
     //cdata.ptr = G_context.pk_info.raw_public_key;
     // handler_get_public_key ( buffer_t *cdata, bool display)
-    if (!address_from_pubkey(G_context.pk_info.raw_public_key, &g_address, ADDRESS_LEN)) {
+    /*if (!address_from_pubkey(G_context.pk_info.raw_public_key, g_address, ADDRESS_LEN)) {
         //return io_send_sw(SW_DISPLAY_ADDRESS_FAIL);
-    }
+    }*/
 
     ux_flow_init(0, ux_menu_publickey_flow, NULL);
 }

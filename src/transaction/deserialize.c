@@ -16,6 +16,8 @@
  *****************************************************************************/
 
 #include <string.h>  // memset
+#include <stdio.h>
+#include <stdlib.h>
 #include "deserialize.h"
 #include "utils.h"
 #include "types.h"
@@ -266,6 +268,24 @@ parser_status_e script_deserialize(buffer_t *script_buf,
     //    return (script_buf->offset == script_buf->size) ? PARSING_OK : SCRIPT_UNDERFLOW_ERROR;
 }
 
+void load_push_array_to_string(load_push_t *array, size_t array_size, char *output_str, size_t output_str_size) {
+    char temp[256];
+    output_str[0] = '\0';  // Ensure the output string starts empty
+
+    for (size_t i = 0; i < array_size; ++i) {
+        // Ensure that we don't overflow the output string
+        if (strlen(output_str) + strlen(temp) + 1 < output_str_size) {  // +1 for the comma
+            strcat(output_str, temp);
+            if (i < array_size - 1) {
+                strcat(output_str, ",");  // Add a comma after each struct, except the last one
+            }
+        } else {
+            // Handle error - output string not large enough
+            return;
+        }
+    }
+}
+
 parser_status_e transaction_deserialize(buffer_t *buf, transaction_t *tx) {
     if (buf->size > MAX_TRANSACTION_LEN) {
         return LENGTH_OVERFLOW_ERROR;
@@ -364,6 +384,7 @@ parser_status_e transaction_deserialize(buffer_t *buf, transaction_t *tx) {
         
     } else if ( tx->type == TRANSACTION_TYPE_STAKE ){
         // Handle Stake Tokens
+        load_push_array_to_string(&tx->contract_call.args, tx->contract_call.args_len, &tx->output_args, tx->output_args_len);
 
     }else if ( tx->type == TRANSACTION_TYPE_UNSTAKE ){
         // Handle Unstake Tokens

@@ -162,4 +162,6 @@ typedef struct {
     end_t end;
 
     transaction_type_e type;
+    uint8_t* output_args;
+    uint8_t output_args_len;
 } transaction_t;
