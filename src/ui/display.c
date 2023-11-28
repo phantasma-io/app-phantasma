@@ -200,6 +200,11 @@ int ui_display_transaction() {
         return io_send_sw(SW_BAD_STATE);
     }
 
+    if ( G_context.tx_info.transaction.type == TRANSACTION_TYPE_CUSTOM)
+    {
+        return ui_display_custom_transaction();
+    }
+
     memset(g_txlength, 0, sizeof(g_txlength));
     format_u64(g_txlength, sizeof(g_txlength), G_context.tx_info.raw_tx_len);
 
@@ -285,7 +290,7 @@ int ui_display_custom_transaction() {
     }
 
     memset(g_txlength, 0, sizeof(g_txlength));
-    format_u64(g_txlength, sizeof(g_txlength), G_context.tx_info.raw_tx_len);
+    format_u64(g_txlength, sizeof(g_txlength), G_context.tx_info.transaction.allow_gas.args_len);
 
     memset(g_nexus, 0, sizeof(g_nexus));
     memmove(g_nexus, G_context.tx_info.transaction.nexus, G_context.tx_info.transaction.nexus_len);
@@ -294,10 +299,10 @@ int ui_display_custom_transaction() {
     memmove(g_chain, G_context.tx_info.transaction.chain, G_context.tx_info.transaction.chain_len);
 
     memset(g_contract, 0, sizeof(g_contract));
-    memmove(g_contract, G_context.tx_info.transaction.name, G_context.tx_info.transaction.name_len);
+    memmove(g_contract, (uint8_t *)  G_context.tx_info.transaction.contract_call.name.buf.ptr, G_context.tx_info.transaction.contract_call.name.buf.size);
 
     memset(g_contract_method, 0, sizeof(g_contract_method));
-    memmove(g_contract_method, G_context.tx_info.transaction.method, G_context.tx_info.transaction.method_len);
+    memmove(g_contract_method, (uint8_t *)  G_context.tx_info.transaction.contract_call.method.load.buf.ptr, G_context.tx_info.transaction.contract_call.method.load.buf.size);
 
     memset(g_scriptlength, 0, sizeof(g_scriptlength));
     format_u64(g_scriptlength, sizeof(g_scriptlength), G_context.tx_info.transaction.script_len);
@@ -305,7 +310,7 @@ int ui_display_custom_transaction() {
     memset(g_address, 0, sizeof(g_address));
     memmove(g_address, G_context.tx_info.transaction.to, G_context.tx_info.transaction.to_len);
 
-
+    // TODO: Needs to show args from the contract call.
 
     g_validate_callback = &ui_action_validate_transaction;
 

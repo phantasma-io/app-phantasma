@@ -78,11 +78,13 @@ void ui_menu_pubkey() {
     
     int result = handler_get_public_key_menu();
     uint8_t address[ADDRESS_LEN] = {0};
-    if ( result == -3){
+    if ( result == -3 || result == -2 || result == -1){
         G_context.pk_info.raw_public_key[0] = 5;
     }
+
     if (!address_from_pubkey(G_context.pk_info.raw_public_key, address, sizeof(address))) {
        // return io_send_sw(SW_DISPLAY_ADDRESS_FAIL);
+        G_context.pk_info.raw_public_key[0] = 5;
     }
     memmove(g_address, address, ADDRESS_LEN);
     

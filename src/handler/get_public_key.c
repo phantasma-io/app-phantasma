@@ -84,6 +84,10 @@ int handler_get_public_key_menu() {
         0x00000000, // 0
         0x00000000  // 0
     };
+
+    //const char bip32_path_str[] = "44'/60'/0'/0/0";
+    //const char bip32_path_str[] = "8000002C8000003C800000000000000000000000";
+
     size_t bip32_path_len = sizeof(bip32_path) / sizeof(bip32_path[0]);
 
     // Initialize the buffer
@@ -100,8 +104,9 @@ int handler_get_public_key_menu() {
     cx_ecfp_private_key_t private_key = {0};
     cx_ecfp_public_key_t public_key = {0};
 
-    // Read BIP32 path from incoming data and handle errors
-    if (!buffer_read_u8(&cdata, &G_context.bip32_path_len) || !buffer_read_bip32_path(&cdata, G_context.bip32_path, (size_t) G_context.bip32_path_len)) {
+    G_context.bip32_path_len = 5;
+
+    if ( !buffer_read_bip32_path(&cdata, G_context.bip32_path, (size_t) G_context.bip32_path_len)) {
         return -3;
     }
 

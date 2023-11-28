@@ -157,28 +157,100 @@ parser_status_e read_method_args(buffer_t *script_buf, load_push_t *args, const 
     return PARSING_OK;
 }
 
-int get_number_of_args(buffer_t script_buf) {
-    int args = 0;
-    size_t offset;
-    memmove(&offset, &script_buf.offset, sizeof(&script_buf.offset));
-    while (script_buf.offset < script_buf.size) {
-        uint8_t opcode;
+uint8_t get_number_of_args_contract(buffer_t script_buf) {
+    uint8_t args = 0;
+    uint8_t reg, type, buf_len;
+    uint8_t opcode;
+    while (script_buf.offset < script_buf.offset + sizeof(buffer_t) * ADDRESS_LEN) {
+        //read_load_push(script_buf, &args[ix])
         if (!read_opcode(&script_buf, &opcode)) {
             break;
         }
 
+        // LOAD ->
         if (opcode == 13) {
             args++;
-        }else {
+            if (!buffer_read_u8(&script_buf, &reg)) {
+                break;
+            }
+            if (!buffer_read_u8(&script_buf, &type)) {
+                break;
+            }
+            if (!buffer_read_u8(&script_buf, &buf_len)) {
+                break;
+            }
+            buffer_t buf = {.ptr = script_buf.ptr + script_buf.offset, .size = buf_len, .offset = 0};
+            buffer_seek_cur(&script_buf, buf_len);
+        }
+        else if ( opcode == 3) // PUSH
+        {
+            if (!buffer_read_u8(&script_buf, &reg)) {
+                break;
+            }
+
+        // CTX  OR EXTCALL
+        }else if ( opcode == 45){
+            args -= 2;
+            break;
+        }
+        else if (  opcode == 7)
+        {
+            args -= 1;
             break;
         }
     }
-    memmove(&script_buf.offset, &offset, sizeof(&script_buf.offset));
+
     return args;
 }
 
+bool is_interop(buffer_t script_buf)
+{
+    bool isInterop = 0;
+    uint8_t reg, type, buf_len;
+    uint8_t opcode;
+    while (script_buf.offset < script_buf.offset + sizeof(buffer_t) * ADDRESS_LEN) {
+        //read_load_push(script_buf, &args[ix])
+        if (!read_opcode(&script_buf, &opcode)) {
+            break;
+        }
+
+        // LOAD ->
+        if (opcode == 13) {
+            if (!buffer_read_u8(&script_buf, &reg)) {
+                break;
+            }
+            if (!buffer_read_u8(&script_buf, &type)) {
+                break;
+            }
+            if (!buffer_read_u8(&script_buf, &buf_len)) {
+                break;
+            }
+            buffer_t buf = {.ptr = script_buf.ptr + script_buf.offset, .size = buf_len, .offset = 0};
+            buffer_seek_cur(&script_buf, buf_len);
+        }
+        else if ( opcode == 3) // PUSH
+        {
+            if (!buffer_read_u8(&script_buf, &reg)) {
+                break;
+            }
+
+        // CTX  OR EXTCALL
+        }else if ( opcode == 45){
+            break;
+        }
+        else if (  opcode == 7 )
+        {
+            isInterop = 1;
+            break;
+        }
+    }
+
+    return isInterop;
+}
+
 parser_status_e read_contract(buffer_t *script_buf, contract_t *contract) {
-    contract->args_len = get_number_of_args(*script_buf);
+    contract->args_len = get_number_of_args_contract(*script_buf);
+
     parser_status_e method_args_status = read_method_args(script_buf, contract->args, contract->args_len);
     if (method_args_status != PARSING_OK) {
         return method_args_status;
@@ -203,6 +275,8 @@ parser_status_e read_contract(buffer_t *script_buf, contract_t *contract) {
 }
 
 parser_status_e read_interop(buffer_t *script_buf, interop_t *interop) {
+    //interop->args_len = get_number_of_args(*script_buf);
+
     parser_status_e method_args_status =
         read_method_args(script_buf, interop->args, interop->args_len);
     if (method_args_status != PARSING_OK) {
@@ -236,26 +310,31 @@ parser_status_e script_deserialize(buffer_t *script_buf,
     transfer_tokens->args_len = TRANSFER_TOKENS_ARGS_LEN;
     contract_call->args_len = MAX_ARGS_LEN;
     spend_gas->args_len = SPEND_GAS_ARGS_LEN;
+    *type = TRANSACTION_TYPE_TRANSFER;
+    bool isTransfer = 1;
+
     size_t offset;
 
     parser_status_e allow_gas_status = read_contract(script_buf, allow_gas);
     if (allow_gas_status != PARSING_OK) {
-        // return allow_gas_status;
+        //*type = TRANSACTION_TYPE_CUSTOM;
+        //return allow_gas_status;
     }
 
-    memmove(&offset, &script_buf->offset, sizeof(&script_buf->offset));
-    parser_status_e read_transfer_tokens_status = read_interop(script_buf, transfer_tokens);
-    if (read_transfer_tokens_status != PARSING_OK) {
-        // return read_transfer_tokens_status;
-        memmove(&script_buf->offset, &offset, sizeof(&script_buf->offset));
+    if (is_interop(*script_buf)){
+        parser_status_e read_transfer_tokens_status = read_interop(script_buf, transfer_tokens);
+        if (read_transfer_tokens_status != PARSING_OK) {
+            // return read_transfer_tokens_status;
+        }
+    }else {
+        *type = TRANSACTION_TYPE_CUSTOM;
+        parser_status_e read_call_contract_status = read_contract(script_buf, contract_call);
+        if (read_call_contract_status != PARSING_OK) {
+            return read_call_contract_status;
+            //memmove(&script_buf->offset, &offset, sizeof(&script_buf->offset));
+        }
     }
-
-    parser_status_e read_call_contract_status = read_contract(script_buf, contract_call);
-    if (read_call_contract_status != PARSING_OK) {
-        // return read_spend_gas_status;
-        memmove(&script_buf->offset, &offset, sizeof(&script_buf->offset));
-    }
-
+    
     parser_status_e read_spend_gas_status = read_contract(script_buf, spend_gas);
     if (read_spend_gas_status != PARSING_OK) {
         // return read_spend_gas_status;
@@ -336,6 +415,7 @@ parser_status_e transaction_deserialize(buffer_t *buf, transaction_t *tx) {
     tx->script_buf.ptr = tx->script;
     tx->script_buf.size = tx->script_len;
     tx->script_buf.offset = 0;
+
     parser_status_e script_deserialize_status = script_deserialize(&tx->script_buf,
                                                                    &tx->allow_gas,
                                                                    &tx->contract_call,
@@ -368,6 +448,7 @@ parser_status_e transaction_deserialize(buffer_t *buf, transaction_t *tx) {
     tx->gas_limit_len = tx->allow_gas.args[0].load.buf.size;
 
     // Handle a Transfer Tokens
+    //tx->type = 1;
     if (tx->type == TRANSACTION_TYPE_TRANSFER) {
         //'Runtime.TransferTokens', [from(3), to(2), tokenName(1), amount(0)])
         tx->from = (uint8_t *) tx->transfer_tokens.args[3].load.buf.ptr;
@@ -380,19 +461,13 @@ parser_status_e transaction_deserialize(buffer_t *buf, transaction_t *tx) {
 
         tx->token = (uint8_t *) tx->transfer_tokens.args[1].load.buf.ptr;
         tx->token_len = tx->transfer_tokens.args[1].load.buf.size;
-
-        
-    } else if ( tx->type == TRANSACTION_TYPE_STAKE ){
+    } else if ( tx->type == TRANSACTION_TYPE_CUSTOM ){
         // Handle Stake Tokens
+        //tx->name = (uint8_t *) tx->contract_call.name.load.buf.ptr;
+        //tx->name_len = tx->contract_call.name.load.buf.size;
         load_push_array_to_string(&tx->contract_call.args, tx->contract_call.args_len, &tx->output_args, tx->output_args_len);
-
-    }else if ( tx->type == TRANSACTION_TYPE_UNSTAKE ){
-        // Handle Unstake Tokens
-
-    }else if ( tx->type == TRANSACTION_TYPE_CLAIM ){
-        // Handle Claim
-
     }else {
+        
         return script_deserialize_status;
     }
 
