@@ -74,21 +74,20 @@ UX_STEP_NOCB(ux_menu_publickey_step, bnnn_paging, {
 UX_FLOW(ux_menu_publickey_flow, &ux_menu_publickey_step, &ux_menu_back_step, FLOW_LOOP);
 
 void ui_menu_pubkey() {
-    memset(g_address, 0, sizeof(g_address));
     
-    int result = handler_get_public_key_menu();
-    uint8_t address[ADDRESS_LEN] = {0};
-    if ( result == -3 || result == -2 || result == -1){
-        G_context.pk_info.raw_public_key[0] = 5;
-    }
+    explicit_bzero(&G_context, sizeof(G_context));
+    G_context.req_type = CONFIRM_ADDRESS;
+    G_context.state = STATE_NONE;
 
+    int result = handler_get_public_key_menu();
+
+    memset(g_address, 0, sizeof(g_address));
+    uint8_t address[ADDRESS_LEN] = {0};
     if (!address_from_pubkey(G_context.pk_info.raw_public_key, address, sizeof(address))) {
-       // return io_send_sw(SW_DISPLAY_ADDRESS_FAIL);
-        G_context.pk_info.raw_public_key[0] = 5;
+        // Handle Errors here.
     }
+    
     memmove(g_address, address, ADDRESS_LEN);
-    
-    
 
     ux_flow_init(0, ux_menu_publickey_flow, NULL);
 }
