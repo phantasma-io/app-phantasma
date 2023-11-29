@@ -74,7 +74,7 @@ int handler_get_public_key(buffer_t *cdata, bool display) {
 
 int handler_get_public_key_menu() {
     // PATH = "44'/60'/0'/0/0"
-    // Size = 21 // 0x15
+    // Size = 21 // 0x15 
     // first byte is the length of the path (0x05)
     const uint8_t myCMD[] = {
         0x05, 0x80, 0x00, 0x00, 0x2C, 0x80, 0x00, 0x00, 0x3C,

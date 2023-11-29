@@ -93,8 +93,14 @@ int handler_sign_tx(buffer_t *cdata, uint8_t chunk, bool more) {
             }
 
             G_context.state = STATE_PARSED;
-            
-            return ui_display_transaction();
+
+            if ( G_context.tx_info.transaction.type == TRANSACTION_TYPE_CUSTOM)
+            {
+                return ui_display_custom_transaction();
+            }else {
+                return ui_display_transaction();
+            }
+
         }
     }
 

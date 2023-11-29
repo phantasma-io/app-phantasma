@@ -275,7 +275,7 @@ parser_status_e read_contract(buffer_t *script_buf, contract_t *contract) {
 }
 
 parser_status_e read_interop(buffer_t *script_buf, interop_t *interop) {
-    //interop->args_len = get_number_of_args(*script_buf);
+    interop->args_len = get_number_of_args_contract(*script_buf);
 
     parser_status_e method_args_status =
         read_method_args(script_buf, interop->args, interop->args_len);
@@ -350,9 +350,11 @@ parser_status_e script_deserialize(buffer_t *script_buf,
 void load_push_array_to_string(load_push_t *array, size_t array_size, char *output_str, size_t output_str_size) {
     char temp[256];
     output_str[0] = '\0';  // Ensure the output string starts empty
-
     for (size_t i = 0; i < array_size; ++i) {
-        // Ensure that we don't overflow the output string
+        // copy the load to a temporary string
+        memcpy(temp, array[i].load.buf.ptr, array[i].load.buf.size);
+
+        // Copy the load to a temporary string
         if (strlen(output_str) + strlen(temp) + 1 < output_str_size) {  // +1 for the comma
             strcat(output_str, temp);
             if (i < array_size - 1) {
@@ -363,6 +365,95 @@ void load_push_array_to_string(load_push_t *array, size_t array_size, char *outp
             return;
         }
     }
+}
+
+void reverse_string(char* str) {
+    if (str == NULL) {
+        return; // Handle null pointer
+    }
+
+    int length = strlen(str);
+    for (int i = 0; i < length / 2; ++i) {
+        char temp = str[i];
+        str[i] = str[length - 1 - i];
+        str[length - 1 - i] = temp;
+    }
+}
+/*
+void process_load_push_array(const load_push_t* array, size_t array_size, char* result, size_t result_size) {
+    if (result_size == 0) {
+        return; // No space to write anything
+    }
+
+    memset(result, 0, result_size);
+    char* current_pos = result;
+    size_t remaining_size = result_size;
+
+    for (size_t i = 0; i < array_size; ++i) {
+        size_t to_copy = array[i].load.buf.size;
+        
+        // Adjust to_copy to fit into the remaining buffer space, leave space for the comma and null terminator
+        if (to_copy >= remaining_size - 2) {
+            to_copy = remaining_size - 2;
+        }
+
+        memcpy(current_pos, array[i].load.buf.ptr, to_copy);
+        current_pos += to_copy;
+        remaining_size -= to_copy;
+
+        // Add a comma after each element, except the last one
+        if (i < array_size - 1) {
+            *current_pos = ',';
+            current_pos++;
+            remaining_size--;
+
+            // Break if no space is left for more characters
+            if (remaining_size <= 1) {
+                break;
+            }
+        }
+    }
+
+    // Ensure the result is null-terminated
+    *current_pos = '\0';
+}*/
+
+void process_load_push_array(const load_push_t* array, size_t array_size, char* result, size_t result_size) {
+    if (result_size == 0) {
+        return; // No space to write anything
+    }
+
+    memset(result, 0, result_size);
+    char* current_pos = result;
+    size_t remaining_size = result_size;
+
+    for (int i = array_size - 1; i >= 0; --i) {
+        size_t to_copy = array[i].load.buf.size;
+        
+        // Adjust to_copy to fit into the remaining buffer space, leave space for the comma and null terminator
+        if (to_copy >= remaining_size - 2) {
+            to_copy = remaining_size - 2;
+        }
+
+        memcpy(current_pos, array[i].load.buf.ptr, to_copy);
+        current_pos += to_copy;
+        remaining_size -= to_copy;
+
+        // Add a comma after each element, except the first one (which is now processed last)
+        if (i > 0) {
+            *current_pos = ',';
+            current_pos++;
+            remaining_size--;
+
+            // Break if no space is left for more characters
+            if (remaining_size <= 1) {
+                break;
+            }
+        }
+    }
+
+    // Ensure the result is null-terminated
+    *current_pos = '\0';
 }
 
 parser_status_e transaction_deserialize(buffer_t *buf, transaction_t *tx) {
@@ -427,7 +518,7 @@ parser_status_e transaction_deserialize(buffer_t *buf, transaction_t *tx) {
     // get expiration
     buffer_read_u32(buf, &tx->expiration, BE);
 
-    // get payload
+    // get payload BASE16
     buffer_read_varint(buf, &tx->payload_len);
     if (tx->payload_len > PAYLOAD_LEN) {
         return PAYLOAD_OVERFLOW_ERROR;
@@ -463,9 +554,16 @@ parser_status_e transaction_deserialize(buffer_t *buf, transaction_t *tx) {
         tx->token_len = tx->transfer_tokens.args[1].load.buf.size;
     } else if ( tx->type == TRANSACTION_TYPE_CUSTOM ){
         // Handle Stake Tokens
-        //tx->name = (uint8_t *) tx->contract_call.name.load.buf.ptr;
-        //tx->name_len = tx->contract_call.name.load.buf.size;
-        load_push_array_to_string(&tx->contract_call.args, tx->contract_call.args_len, &tx->output_args, tx->output_args_len);
+        tx->name = (uint8_t *) tx->contract_call.name.buf.ptr;
+        tx->name_len = tx->contract_call.name.buf.size;
+        tx->method = (uint8_t *) tx->contract_call.method.load.buf.ptr;
+        tx->method_len = tx->contract_call.method.load.buf.size;
+
+        tx->output_args_len = 240;
+        char output_args[240] = {0};
+        process_load_push_array(&tx->contract_call.args, tx->contract_call.args_len, &output_args, tx->output_args_len);
+        //reverse_string(&output_args);
+        tx->output_args = (uint8_t *) output_args;
     }else {
         
         return script_deserialize_status;

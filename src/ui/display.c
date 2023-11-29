@@ -39,11 +39,11 @@
 static action_validate_cb g_validate_callback;
 static char g_amount[30];
 static char g_bip32_path[60];
-static char g_address[ADDRESS_LEN];
+static char g_address[240];
 static char g_token[TOKEN_LEN];
 static char g_contract[TOKEN_LEN];
 static char g_contract_method[CONTRACT_METHOD_LEN];
-static char g_contract_method_args[CONTRACT_METHOD_ARGS_LEN];
+//static char g_contract_method_args[64];
 static char g_nexus[NEXUS_LEN];
 static char g_chain[CHAIN_LEN];
 static char g_txlength[TXLENGTH_LEN];
@@ -200,11 +200,6 @@ int ui_display_transaction() {
         return io_send_sw(SW_BAD_STATE);
     }
 
-    if ( G_context.tx_info.transaction.type == TRANSACTION_TYPE_CUSTOM)
-    {
-        return ui_display_custom_transaction();
-    }
-
     memset(g_txlength, 0, sizeof(g_txlength));
     format_u64(g_txlength, sizeof(g_txlength), G_context.tx_info.raw_tx_len);
 
@@ -262,7 +257,7 @@ UX_STEP_NOCB(ux_display_method_args_step,
              bnnn_paging,
              {
                  .title = "Method Args",
-                 .text = g_contract_method_args,
+                 .text = g_address,
              });
 
 // FLOW to display transaction information:
@@ -274,12 +269,11 @@ UX_STEP_NOCB(ux_display_method_args_step,
 // #5 screen : reject button
 UX_FLOW(ux_display_custom_transaction_flow,
         &ux_display_review_step,
-        &ux_display_txlength_step,
         &ux_display_nexus_step,
         &ux_display_chain_step,
-        &ux_display_scriptlength_step,
         &ux_display_contract_step,
         &ux_display_method_step,
+        &ux_display_method_args_step,
         &ux_display_approve_step,
         &ux_display_reject_step);
 
@@ -289,8 +283,8 @@ int ui_display_custom_transaction() {
         return io_send_sw(SW_BAD_STATE);
     }
 
-    memset(g_txlength, 0, sizeof(g_txlength));
-    format_u64(g_txlength, sizeof(g_txlength), G_context.tx_info.transaction.allow_gas.args_len);
+    //memset(g_txlength, 0, sizeof(g_txlength));
+    //format_u64(g_txlength, sizeof(g_txlength), G_context.tx_info.transaction.allow_gas.args_len);
 
     memset(g_nexus, 0, sizeof(g_nexus));
     memmove(g_nexus, G_context.tx_info.transaction.nexus, G_context.tx_info.transaction.nexus_len);
@@ -299,16 +293,19 @@ int ui_display_custom_transaction() {
     memmove(g_chain, G_context.tx_info.transaction.chain, G_context.tx_info.transaction.chain_len);
 
     memset(g_contract, 0, sizeof(g_contract));
-    memmove(g_contract, (uint8_t *)  G_context.tx_info.transaction.contract_call.name.buf.ptr, G_context.tx_info.transaction.contract_call.name.buf.size);
+    memmove(g_contract, (uint8_t *)  G_context.tx_info.transaction.name, G_context.tx_info.transaction.name_len);
 
     memset(g_contract_method, 0, sizeof(g_contract_method));
-    memmove(g_contract_method, (uint8_t *)  G_context.tx_info.transaction.contract_call.method.load.buf.ptr, G_context.tx_info.transaction.contract_call.method.load.buf.size);
-
-    memset(g_scriptlength, 0, sizeof(g_scriptlength));
-    format_u64(g_scriptlength, sizeof(g_scriptlength), G_context.tx_info.transaction.script_len);
+    memmove(g_contract_method, (uint8_t *)  G_context.tx_info.transaction.method, G_context.tx_info.transaction.method_len);
 
     memset(g_address, 0, sizeof(g_address));
-    memmove(g_address, G_context.tx_info.transaction.to, G_context.tx_info.transaction.to_len);
+    memmove(g_address, (uint8_t *)  G_context.tx_info.transaction.output_args, G_context.tx_info.transaction.output_args_len);
+
+    //memset(g_scriptlength, 0, sizeof(g_scriptlength));
+    //format_u64(g_scriptlength, sizeof(g_scriptlength), G_context.tx_info.transaction.script_len);
+
+    //memset(g_address, 0, sizeof(g_address));
+    //memmove(g_address, G_context.tx_info.transaction.to, G_context.tx_info.transaction.to_len);
 
     // TODO: Needs to show args from the contract call.
 
