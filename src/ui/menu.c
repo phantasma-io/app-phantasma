@@ -21,6 +21,7 @@
 
 #include "../globals.h"
 #include "../address.h"
+#include "../handler/get_public_key.h"
 #include "menu.h"
 
 static char g_address[ADDRESS_LEN];
@@ -79,7 +80,7 @@ void ui_menu_pubkey() {
     G_context.req_type = CONFIRM_ADDRESS;
     G_context.state = STATE_NONE;
 
-    int result = handler_get_public_key_menu();
+    handler_get_public_key_menu();
 
     memset(g_address, 0, sizeof(g_address));
     uint8_t address[ADDRESS_LEN] = {0};

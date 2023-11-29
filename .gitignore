@@ -71,3 +71,4 @@ cmake-build-debug/
 *-prefix/
 build/
 .vscode/settings.json
+output-scan-build/
